@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beako: Kütüphane Asistanı</title>
+<style>
+  /* CSS KODU */
+  body {
+      font-family: Arial, sans-serif; margin: 0; padding: 0;
+      background-color: #f0f4f8; display: flex; flex-direction: column; height: 100vh;
+  }
+  #chat-container {
+      flex-grow: 1; overflow-y: auto; padding: 15px;
+  }
+  .message { margin-bottom: 15px; display: flex; align-items: flex-end; }
+  .user-msg { justify-content: flex-end; }
+  .beako-msg { justify-content: flex-start; }
+  .avatar {
+      width: 30px; height: 30px; border-radius: 50%; text-align: center;
+      line-height: 30px; font-weight: bold; color: white; margin: 0 5px;
+  }
+  .beako-avatar { background-color: #795548; }
+  .user-avatar { background-color: #5d6770; }
+  .message-bubble {
+      padding: 10px 15px; border-radius: 18px; max-width: 75%;
+      word-wrap: break-word; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  .user-msg .message-bubble { background-color: #c7e1ff; color: #333; border-bottom-right-radius: 2px; }
+  .beako-msg .message-bubble { background-color: #a1887f; color: white; border-bottom-left-radius: 2px; }
+  #input-area { display: flex; padding: 10px; border-top: 1px solid #ddd; background-color: white; }
+  #user-prompt { flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-radius: 20px; margin-right: 10px; }
+  #send-button {
+      padding: 10px 15px; border: none; background-color: #5d6770;
+      color: white; border-radius: 20px; cursor: pointer; font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<div id="chat-container">
+    <div class="message beako-msg">
+        <div class="avatar beako-avatar">B</div>
+        <div class="message-bubble">Merhaba ben Beako, bu kütüphanenin bekçisiyim. Bir soru sorarsan, elimdeki verilere bakacağım, sanırım.</div>
+    </div>
+</div>
+
+<div id="input-area">
+    <input type="text" id="user-prompt" placeholder="Beako'ya bir soru sor...">
+    <button id="send-button">Gönder</button>
+</div>
+
+<script>
+  // JavaScript Mantığı (Bu kod, API isteğini gizli sunucuya gönderecek)
+  document.getElementById('send-button').addEventListener('click', sendMessage);
+  document.getElementById('user-prompt').addEventListener('keydown', function(event) {
+      if (event.key === 'Enter') {
+          sendMessage();
+      }
+  });
+
+  function displayMessage(text, sender) {
+      const chatContainer = document.getElementById('chat-container');
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'message ' + sender + '-msg';
+      const avatarDiv = document.createElement('div');
+      avatarDiv.className = 'avatar ' + sender + '-avatar';
+      avatarDiv.textContent = sender === 'user' ? 'U' : 'B';
+      const bubbleDiv = document.createElement('div');
+      bubbleDiv.className = 'message-bubble';
+      bubbleDiv.textContent = text;
+
+      if (sender === 'user') {
+          msgDiv.appendChild(bubbleDiv);
+          msgDiv.appendChild(avatarDiv);
+      } else {
+          msgDiv.appendChild(avatarDiv);
+          msgDiv.appendChild(bubbleDiv);
+      }
+      chatContainer.appendChild(msgDiv);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  async function sendMessage() {
+      const promptInput = document.getElementById('user-prompt');
+      const prompt = promptInput.value.trim();
+      if (prompt === '') return;
+
+      displayMessage(prompt, 'user');
+      promptInput.value = '';
+
+      document.getElementById('send-button').disabled = true;
+      promptInput.placeholder = "Beako Düşünüyor...";
+      
+      // API isteğini Netlify Function'a (gizli sunucuya) gönder
+      try {
+          // Bu adres, Netlify'da oluşturacağımız gizli sunucu kodunu çağırır.
+          const response = await fetch('/.netlify/functions/beako', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt: prompt }),
+          });
+
+          const result = await response.json();
+          
+          let beakoResponse;
+          if (response.ok) {
+              beakoResponse = result.response;
+          } else {
+              beakoResponse = "Sunucu Hatası: " + (result.error || "Bilinmeyen Hata, sanırım.");
+          }
+
+          displayMessage(beakoResponse, 'beako');
+
+      } catch (e) {
+          displayMessage("Ağ bağlantısı Hatası: " + e.message, 'beako');
+      } finally {
+          document.getElementById('send-button').disabled = false;
+          promptInput.placeholder = "Beako'ya bir soru sor...";
+      }
+  }
+</script>
+</body>
+</html>
